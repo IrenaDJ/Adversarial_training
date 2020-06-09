@@ -11,6 +11,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import seaborn as sns
+import torchvision
 from torchsummary import summary
 from tensorboardX import SummaryWriter
 
@@ -75,10 +76,16 @@ def display_pic(pic, position):
 	plt.subplot(position)
 	sns.heatmap(data=pixels)
 
-def log_image(image, prediction, writer):
-	#writer.add_image(prediction, image, 0)
-	pass
+def log_image_grid(images, writer):
+	grid = torchvision.utils.make_grid(images)
+	writer.add_image('images', grid, 0)
 
+
+def log_image(image, prediction, writer):
+	#display_image = image.transpose(2, 0, 1)
+	print(image)
+	writer.add_image(str(prediction), image, 0)
+	
 
 def parse_data(path, device):
 	raw_data = pd.read_csv(path, sep=",")
@@ -97,7 +104,7 @@ def parse_data(path, device):
 	return x, y
 
 
-def create_model(model_path, train_path, num_epochs, batch_size, device):
+def train_model(model_path, train_path, num_epochs, batch_size, device, writer):
 
 	model = MyNetwork().to(device)
 
@@ -108,6 +115,7 @@ def create_model(model_path, train_path, num_epochs, batch_size, device):
 	loss_function = nn.CrossEntropyLoss()
 	loss_log = []
 
+	iteration = 0
 	for e in range(num_epochs):
 		for i in range(0, train_x.shape[0], batch_size):
 			train_x_mini = train_x[i:i + batch_size] 
@@ -121,7 +129,9 @@ def create_model(model_path, train_path, num_epochs, batch_size, device):
 			optimizer.step()
         
 			if i % 1000 == 0:
+				writer.add_scalar('Loss/train', loss.item(), iteration)
 				loss_log.append(loss.item())
+			iteration = iteration+1
         
 		print('Epoch: {} - Loss: {:.6f}'.format(e + 1, loss.item()))
 
@@ -133,14 +143,14 @@ def create_model(model_path, train_path, num_epochs, batch_size, device):
 	return model
 
 
-def main(train_model, model_path, test_path, train_path, num_epochs, batch_size, writer_log_dir):
+def main(train_model, model_path, test_path, train_path, num_epochs, batch_size):
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	# should be a parameter
-	writer = SummaryWriter(log_dir = writer_log_dir)
+	writer = SummaryWriter()
 
 	if train_model:
-		model = create_model(model_path, train_path, num_epochs, batch_size, device)
+		model = train_model(model_path, train_path, num_epochs, batch_size, device, writer)
 	else:
 		model = MyNetwork()
 		model.load_state_dict(torch.load(model_path))
@@ -149,12 +159,16 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size,
 	summary(model, (1, 28, 28))
 	test_x, test_y = parse_data(test_path, device)
 
+	log_image_grid(test_x, writer)
+
 	predictions = model(Variable(test_x))
 	model.eval()
 	accuracy = evaluate(torch.max(predictions.data, 1)[1], test_y)
 	print("Accuracy: {}".format(accuracy))
 
-	image = test_x[0].cpu().numpy()
+
+	print(test_x[0].size())
+	image = test_x[0]
 	prediction = predictions[0]
 	log_image(image, prediction, writer)
 	
@@ -163,7 +177,7 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size,
 # python3 small_cnn.py false <model_path> <test_path>
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	writer_log_dir = "experiments"
+	#writer_log_dir = "experiments"
 	good = True
 	try:
 		train_model = bool(int(sys.argv[1]))
@@ -181,4 +195,4 @@ if __name__ == "__main__":
 		print("\nInvalid parameters.\n")
 		good = False
 	if good:
-		main(train_model, model_path, test_path, train_path, num_epochs, batch_size, writer_log_dir)
+		main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
