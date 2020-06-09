@@ -1,4 +1,5 @@
 import sys
+import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from torch.autograd import Variable
 
 import seaborn as sns
 from torchsummary import summary
+from tensorboardX import SummaryWriter
 
 
 class MyNetwork(nn.Module): 
@@ -73,6 +75,10 @@ def display_pic(pic, position):
 	plt.subplot(position)
 	sns.heatmap(data=pixels)
 
+def log_image(image, prediction, writer):
+	#writer.add_image(prediction, image, 0)
+	pass
+
 
 def parse_data(path, device):
 	raw_data = pd.read_csv(path, sep=",")
@@ -127,9 +133,11 @@ def create_model(model_path, train_path, num_epochs, batch_size, device):
 	return model
 
 
-def main(train_model, model_path, test_path, train_path, num_epochs, batch_size):
+def main(train_model, model_path, test_path, train_path, num_epochs, batch_size, writer_log_dir):
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	# should be a parameter
+	writer = SummaryWriter(log_dir = writer_log_dir)
 
 	if train_model:
 		model = create_model(model_path, train_path, num_epochs, batch_size, device)
@@ -146,13 +154,16 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
 	accuracy = evaluate(torch.max(predictions.data, 1)[1], test_y)
 	print("Accuracy: {}".format(accuracy))
 
-	display_pic(test_)
+	image = test_x[0].cpu().numpy()
+	prediction = predictions[0]
+	log_image(image, prediction, writer)
 	
-
 
 # python3 small_cnn.py true <model_path> <test_path> <train_path> <num_epochs> <batch_size>
 # python3 small_cnn.py false <model_path> <test_path>
 if __name__ == "__main__":
+	parser = argparse.ArgumentParser()
+	writer_log_dir = "experiments"
 	good = True
 	try:
 		train_model = bool(int(sys.argv[1]))
@@ -170,4 +181,4 @@ if __name__ == "__main__":
 		print("\nInvalid parameters.\n")
 		good = False
 	if good:
-		main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
+		main(train_model, model_path, test_path, train_path, num_epochs, batch_size, writer_log_dir)
