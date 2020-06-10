@@ -1,5 +1,4 @@
 import sys
-import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -57,6 +56,7 @@ class MyNetwork(nn.Module):
 		x = self.fc2(x)
 		x = F.relu(x)
 		x = self.softmax(x)
+
 		return x
         
 
@@ -88,6 +88,19 @@ def log_image(image, prediction, writer):
 	writer.add_image(prediction, image, 0)
 	
 
+def image_grid(images, labels):
+  """Return a 5x5 grid of the MNIST images as a matplotlib figure."""
+  # Create a figure to contain the plot.
+  figure = plt.figure(figsize=(10,10))
+  for i in range(25):
+    # Start next subplot.
+    plt.subplot(5, 5, i + 1, title=labels[i])
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(images[i], cmap=plt.cm.binary)
+
+
 def parse_data(path, device):
 	raw_data = pd.read_csv(path, sep=",")
 
@@ -108,13 +121,10 @@ def parse_data(path, device):
 def train_model(model_path, train_path, num_epochs, batch_size, device, writer):
 
 	model = MyNetwork().to(device)
-
 	train_x, train_y = parse_data(train_path, device)
 
 	optimizer = optim.SGD(model.parameters(), 0.001, momentum=0.7)
-	
 	loss_function = nn.CrossEntropyLoss()
-	loss_log = []
 
 	iteration = 0
 	for e in range(num_epochs):
@@ -123,34 +133,27 @@ def train_model(model_path, train_path, num_epochs, batch_size, device, writer):
 			train_y_mini = train_y[i:i + batch_size] 
         
 			optimizer.zero_grad()
-			net_out = model(Variable(train_x_mini))
-        
-			loss = loss_function(net_out, Variable(train_y_mini))
+			output = model(Variable(train_x_mini))
+			loss = loss_function(output, Variable(train_y_mini))
 			loss.backward()
 			optimizer.step()
         
 			if i % 1000 == 0:
-				writer.add_scalar('Loss/train', loss.item(), iteration)
-				loss_log.append(loss.item())
-			iteration = iteration+1
+				writer.add_scalar('Loss/Train', loss.item(), iteration)
+			iteration += 1
         
 		print('Epoch: {} - Loss: {:.6f}'.format(e + 1, loss.item()))
-
-	plt.figure(figsize=(10, 8))
-	plt.plot(loss_log[2:])
-	plt.show()
 
 	torch.save(model.state_dict(), model_path)
 	return model
 
 
-def main(train_model, model_path, test_path, train_path, num_epochs, batch_size):
+def main(pretrained, model_path, test_path, train_path, num_epochs, batch_size):
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-	# should be a parameter
 	writer = SummaryWriter()
 
-	if train_model:
+	if not pretrained:
 		model = train_model(model_path, train_path, num_epochs, batch_size, device, writer)
 	else:
 		model = MyNetwork()
@@ -177,17 +180,15 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
 	writer.close()
 
 	
-# python3 small_cnn.py true <model_path> <test_path> <train_path> <num_epochs> <batch_size>
-# python3 small_cnn.py false <model_path> <test_path>
+# python3 small_cnn.py 0 <model_path> <test_path> <train_path> <num_epochs> <batch_size>
+# python3 small_cnn.py 1 <model_path> <test_path>
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser()
-	#writer_log_dir = "experiments"
 	good = True
 	try:
-		train_model = bool(int(sys.argv[1]))
+		pretrained = bool(int(sys.argv[1]))
 		model_path = sys.argv[2]
 		test_path = sys.argv[3]
-		if train_model:
+		if not pretrained:
 			train_path = sys.argv[4]
 			num_epochs = int(sys.argv[5])
 			batch_size = int(sys.argv[6])
@@ -199,4 +200,4 @@ if __name__ == "__main__":
 		print("\nInvalid parameters.\n")
 		good = False
 	if good:
-		main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
+		main(pretrained, model_path, test_path, train_path, num_epochs, batch_size)
