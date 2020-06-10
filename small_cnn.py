@@ -13,7 +13,7 @@ from torch.autograd import Variable
 import seaborn as sns
 import torchvision
 from torchsummary import summary
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 class MyNetwork(nn.Module): 
@@ -56,8 +56,9 @@ class MyNetwork(nn.Module):
 		x = F.relu(x)
 		x = self.fc2(x)
 		x = F.relu(x)
+		x = self.softmax(x)
+		return x
         
-		return self.softmax(x)
 
 
 def evaluate(predictions, labels):
@@ -83,8 +84,8 @@ def log_image_grid(images, writer):
 
 def log_image(image, prediction, writer):
 	#display_image = image.transpose(2, 0, 1)
-	print(image)
-	writer.add_image(str(prediction), image, 0)
+	#print(image)
+	writer.add_image(prediction, image, 0)
 	
 
 def parse_data(path, device):
@@ -159,8 +160,8 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
 	summary(model, (1, 28, 28))
 	test_x, test_y = parse_data(test_path, device)
 
-	log_image_grid(test_x, writer)
-
+	#log_image_grid(test_x, writer)
+	letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 	predictions = model(Variable(test_x))
 	model.eval()
 	accuracy = evaluate(torch.max(predictions.data, 1)[1], test_y)
@@ -168,11 +169,14 @@ def main(train_model, model_path, test_path, train_path, num_epochs, batch_size)
 
 
 	print(test_x[0].size())
-	image = test_x[0]
-	prediction = predictions[0]
+	image = test_x[0].detach().cpu()
+	prediction = torch.max(predictions.data, 1)[1][0]
+	print(prediction)
+	prediction = letters[prediction.item()]
 	log_image(image, prediction, writer)
-	
+	writer.close()
 
+	
 # python3 small_cnn.py true <model_path> <test_path> <train_path> <num_epochs> <batch_size>
 # python3 small_cnn.py false <model_path> <test_path>
 if __name__ == "__main__":
