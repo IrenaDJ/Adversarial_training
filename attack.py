@@ -27,47 +27,63 @@ def fgsm(model, X, y, epsilon):
     return epsilon * delta.grad.detach().sign()
 
 
-def pgd_linf(model, X, y, epsilon, alpha = 1e-2, num_iter = 40):
+def pgd_linf(model, X, y, epsilon, alpha = 1, num_iter = 100):
     """ Construct PGD adversarial examples on the examples X"""
     delta = torch.zeros_like(X, requires_grad=True)
     for t in range(num_iter):
-        loss = -nn.CrossEntropyLoss()(model(X + delta), y)
+        loss = nn.CrossEntropyLoss()(model(X + delta), y)
+        #print(loss)
         loss.backward()
-        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon,epsilon)
+        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
         delta.grad.zero_()
     return delta.detach()
 
 
 
-def attack(model_path, test_path, attack_type):
+def attack(model_path, test_path, batch_size, attack_type):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     writer = SummaryWriter()
+    letters = string.ascii_uppercase
 
     model = models.MyNetwork()
     model.load_state_dict(torch.load(model_path))
     model = model.to(device)
+    model.eval()
 
     test_x, test_y = utils.parse_data(test_path, device)
 
-    delta = attack_type(model, test_x, test_y, 0.1)
-    predictions = model(test_x + delta)
+    test_delta = torch.zeros_like(test_x)
+    
+    for i in range(0, test_x.shape[0], batch_size):
+        test_x_mini = test_x[i:i + batch_size]
+        test_y_mini = test_y[i:i + batch_size]
+
+        delta = attack_type(model, test_x_mini, test_y_mini, 5)
+        output = model(test_x_mini + delta)
+        predictions = torch.max(output.data, 1)[1]
+        
+        if i % 1000 == 0:
+            writer.add_scalar('Accuracy/Train', utils.evaluate(predictions, test_y_mini))		
+        test_delta[i:i+ batch_size] = delta
+    
+    reg_output = model(test_x)
+    adv_output = model(test_x + test_delta)
 
     #test visualisation
-    M, N = 2, 6
-    #images = test_x[0:M*N].detach().cpu()
-
-    letters = string.ascii_uppercase
-
+    M, N = 4, 3
     perm = torch.randperm(test_x.size(0))
     ids = perm[:M*N]
 
-    images = (test_x+delta)[ids].detach().cpu()
+    reg_images = test_x[ids].detach().cpu()
+    delta_images = test_delta[ids].detach().cpu()
+    adv_images = (test_x+test_delta)[ids].detach().cpu()
 
     labels = [letters[test_y[i].detach().cpu()] for i in ids]
-    predictions = [letters[torch.max(predictions.data, 1)[1][i].item()] for i in ids]
+    reg_predictions = [letters[torch.max(reg_output.data, 1)[1][i].item()] for i in ids]
+    adv_predictions = [letters[torch.max(adv_output.data, 1)[1][i].item()] for i in ids]
 
-    utils.log_image_grid(images, labels, predictions, M, N, writer)
+    utils.log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N, writer)
 
     writer.close()
 
@@ -89,4 +105,4 @@ if __name__ == "__main__":
         if attack_type == None:
             print("\nInvalid Attack Type selected.\n")
         else:
-            attack(model_path, test_path, attack_type)
+            attack(model_path, test_path, 100, attack_type)

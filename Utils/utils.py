@@ -53,6 +53,33 @@ def plot_grid(images, labels, predictions, M, N):
   plt.show()
   return figure
 
+def plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N):
+  # Create a figure to contain the plot.
+  figure = plt.figure(figsize=(M,3*N))
+  for i in range(M*N):
+    # Start next subplot.
+    plt.subplot(M, 3*N, 3*i + 1, title='#' + str(i+1) + ': ' + reg_predictions[i]
+      + ' (' + labels[i] + ')')
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(reg_images[i].reshape(28, 28), cmap=plt.cm.binary)
+
+    plt.subplot(M, 3*N, 3*i + 3, title='#' + str(i+1))
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(delta_images[i].reshape(28, 28), cmap=plt.cm.binary)
+
+    plt.subplot(M, 3*N, 3*i + 2, title='#' + str(i+1) + ': ' + adv_predictions[i]
+      + ' (' + labels[i] + ')')
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(adv_images[i].reshape(28, 28), cmap=plt.cm.binary)
+  plt.show()
+  return figure
+
 def display_pic(pic, position):
 	pixels = pic.reshape(28, 28)
 	plt.subplot(position)
@@ -63,6 +90,10 @@ def log_image_grid(images, labels, predictions, M, N, writer):
   to_show = plot_to_image(plot)
   writer.add_image('images', to_show, 0)
 
+def log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N, writer):
+  plot = plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N)
+  to_show = plot_to_image(plot)
+  writer.add_image('images', to_show, 0)
 
 
 def parse_data(path, device):
