@@ -11,16 +11,16 @@ class MyNetwork(nn.Module):
 	def __init__(self):
 		super(MyNetwork, self).__init__()
 		
-		self.conv1 = nn.Conv2d(1, 10, 3)
+		self.conv1 = nn.Conv2d(1, 10, 3, padding=1)
 		self.pool1 = nn.MaxPool2d(2)
         
-		self.conv2 = nn.Conv2d(10, 20, 3)
+		self.conv2 = nn.Conv2d(10, 20, 3, padding=1)
 		self.pool2 = nn.MaxPool2d(2)
         
-		self.conv3 = nn.Conv2d(20, 30, 3) 
+		self.conv3 = nn.Conv2d(20, 30, 3, padding=1)
 		self.dropout = nn.Dropout2d()
         
-		self.fc1 = nn.Linear(30 * 3 * 3, 270) 
+		self.fc1 = nn.Linear(30 * 7 * 7, 270)
 		self.fc2 = nn.Linear(270, 26)
         
 		self.softmax = nn.LogSoftmax(dim=1)
@@ -39,7 +39,7 @@ class MyNetwork(nn.Module):
 		x = F.relu(x)
 		x = self.dropout(x)
                 
-		x = x.view(-1, 30 * 3 * 3)
+		x = x.view(x.size(0), -1)
 
 		x = self.fc1(x)
 		x = F.relu(x)
