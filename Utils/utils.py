@@ -95,7 +95,7 @@ def log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predict
     writer.add_image('images', to_show, 0)
 
 
-def parse_data(path, device):
+def parse_data(path):
 	raw_data = pd.read_csv(path, sep=",")
 
 	labels = raw_data['label']
@@ -106,7 +106,7 @@ def parse_data(path, device):
 
 	data = data.reshape(data.shape[0], 1, 28, 28)
 
-	x = torch.cuda.FloatTensor(data).to(device)
-	y = torch.cuda.LongTensor(labels).to(device)
+	x = torch.cuda.FloatTensor(data)
+	y = torch.cuda.LongTensor(labels)
 
 	return x, y

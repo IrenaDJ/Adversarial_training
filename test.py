@@ -31,7 +31,9 @@ def test(model_path, test_path, display_rows, display_columns):
 	model = model.to(device)
 	model.eval()
 
-	test_x, test_y = utils.parse_data(test_path, device)
+	test_x, test_y = utils.parse_data(test_path)
+	test_x = test_x.to(device)
+	test_y = test_y.to(device)
 	output = model(test_x)
 	predictions = torch.max(output.data, 1)[1]
 

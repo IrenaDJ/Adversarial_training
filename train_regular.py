@@ -24,7 +24,7 @@ def train_regular(model_path, train_path, num_epochs, batch_size):
 	writer = SummaryWriter()
 
 	model = models.MyNetwork().to(device)
-	train_x, train_y = utils.parse_data(train_path, device)
+	train_x, train_y = utils.parse_data(train_path)
 
 	optimizer = optim.SGD(model.parameters(), 0.001, momentum=0.7)
 	loss_function = nn.CrossEntropyLoss()
@@ -32,8 +32,8 @@ def train_regular(model_path, train_path, num_epochs, batch_size):
 	iteration = 0
 	for e in range(num_epochs):
 		for i in range(0, train_x.shape[0], batch_size):
-			train_x_mini = train_x[i:i + batch_size] 
-			train_y_mini = train_y[i:i + batch_size] 
+			train_x_mini = train_x[i:i + batch_size].to(device)
+			train_y_mini = train_y[i:i + batch_size].to(device)
         
 			optimizer.zero_grad()
 			output = model(train_x_mini)

@@ -18,26 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import Utils.utils as utils
 import Utils.models as models
-
-
-def fgsm(model, x, y, epsilon):
-    """ Construct FGSM adversarial examples on the examples X"""
-    delta = torch.zeros_like(x, requires_grad=True)
-    loss_function = nn.CrossEntropyLoss()
-    loss = loss_function(model(x + delta), y)
-    loss.backward()
-    return epsilon * delta.grad.detach().sign()
-
-
-def pgd_linf(model, x, y, epsilon, alpha = 1, num_iter = 100):
-    delta = torch.zeros_like(x, requires_grad=True)
-    loss_function = nn.CrossEntropyLoss()
-    for t in range(num_iter):
-        loss = loss_function(model(x + delta), y)
-        loss.backward()
-        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
-        delta.grad.zero_()
-    return delta.detach()
+import Utils.attacks as attacks
 
 
 def attack(model_path, test_path, attack_type, batch_size, display_rows, display_columns):
@@ -51,7 +32,9 @@ def attack(model_path, test_path, attack_type, batch_size, display_rows, display
     model = model.to(device)
     model.eval()
 
-    test_x, test_y = utils.parse_data(test_path, device)
+    test_x, test_y = utils.parse_data(test_path)
+    test_x = test_x.to(device)
+    test_y = test_y.to(device)
     test_delta = torch.zeros_like(test_x)
     
     for i in range(0, test_x.shape[0], batch_size):
@@ -108,9 +91,9 @@ if __name__ == "__main__":
         if good:
             attack_type = None
             if sys.argv[3] == "pgd_linf":
-                attack_type = pgd_linf
+                attack_type = attacks.pgd_linf
             elif sys.argv[3] == "fgsm":
-                attack_type = fgsm
+                attack_type = attacks.fgsm
         
             if attack_type == None:
                 print("\nInvalid attack type specified.\n")
