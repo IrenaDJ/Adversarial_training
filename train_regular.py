@@ -17,6 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 import Utils.utils as utils
 import Utils.models as models
 
+
 def train_regular(model_path, train_path, num_epochs, batch_size):
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,14 +40,14 @@ def train_regular(model_path, train_path, num_epochs, batch_size):
 			loss = loss_function(output, train_y_mini)
 			loss.backward()
 			optimizer.step()
+
 			predictions = torch.max(output.data, 1)[1]
-			
 			if i % 1000 == 0:
 				writer.add_scalar('Loss/Train', loss.item(), iteration)
 				writer.add_scalar('Accuracy/Train', utils.evaluate(predictions, train_y_mini))
 			iteration += 1
         
-		print('Epoch: {} - Loss: {:.6f}'.format(e + 1, loss.item()))
+		print('Epoch: {}, Loss: {:.6f}'.format(e + 1, loss.item()))
 
 	writer.close()
 	torch.save(model.state_dict(), model_path)

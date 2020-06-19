@@ -5,10 +5,10 @@ import torch
 import cv2
 
 
-class DataLoader(torch.utils.data.Dataset):
+class ImageDataLoader(torch.utils.data.Dataset):
     def __init__(self,csv,train=True):
         self.csv=pd.read_csv(csv)
-        self.img_size=224
+        self.img_size=28
         # print(self.csv['image_names'][:5])
         self.train=train
         text="pixel"

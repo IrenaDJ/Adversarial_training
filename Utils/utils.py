@@ -16,7 +16,6 @@ from torchsummary import summary
 from torch.utils.tensorboard import SummaryWriter
 
 
-
 def evaluate(predictions, labels):              
 	correct = 0
 	for p, l in zip(predictions, labels):
@@ -27,73 +26,73 @@ def evaluate(predictions, labels):
 	return accuracy
 
 
-
 def plot_to_image(figure):
-  """Converts the matplotlib plot specified by 'figure' to a tensor"""
+    """Converts the matplotlib plot specified by 'figure' to a tensor"""
 
-  data = np.frombuffer(figure.canvas.tostring_rgb(), dtype=np.uint8)
-  w, h = figure.canvas.get_width_height()
-  data = data.reshape(h, w, 3)
+    data = np.frombuffer(figure.canvas.tostring_rgb(), dtype=np.uint8)
+    w, h = figure.canvas.get_width_height()
+    data = data.reshape(h, w, 3)
 
-  trans = transforms.ToPILImage()
-  trans_tensor = transforms.ToTensor()
-  return trans_tensor(trans(data))
+    trans = transforms.ToPILImage()
+    trans_tensor = transforms.ToTensor()
+    return trans_tensor(trans(data))
 
-def plot_grid(images, labels, predictions, M, N):
-  # Create a figure to contain the plot.
-  figure = plt.figure(figsize=(M,N))
-  for i in range(M*N):
-    # Start next subplot.
-    plt.subplot(M, N, i + 1, title=predictions[i] + ' (' + labels[i] + ')')
-    #plt.setp(title, color=('g' if yp[i*N+j].max(dim=0)[1] == y[i*N+j] else 'r'))
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(images[i].reshape(28, 28), cmap=plt.cm.binary)
-  plt.show()
-  return figure
 
-def plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N):
-  # Create a figure to contain the plot.
-  figure = plt.figure(figsize=(M,3*N))
-  for i in range(M*N):
-    # Start next subplot.
-    plt.subplot(M, 3*N, 3*i + 1, title='#' + str(i+1) + ': ' + reg_predictions[i]
-      + ' (' + labels[i] + ')')
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(reg_images[i].reshape(28, 28), cmap=plt.cm.binary)
+def plot_grid(images, labels, predictions, m, n):
+    
+    figure = plt.figure(figsize=(m, n))
+    for i in range(m*n):
+        plt.subplot(m, n, i + 1, title=predictions[i] + ' (' + labels[i] + ')')
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(images[i].reshape(28, 28), cmap=plt.cm.binary)
+    plt.show()
+    return figure
 
-    plt.subplot(M, 3*N, 3*i + 3, title='#' + str(i+1))
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(delta_images[i].reshape(28, 28), cmap=plt.cm.binary)
 
-    plt.subplot(M, 3*N, 3*i + 2, title='#' + str(i+1) + ': ' + adv_predictions[i]
-      + ' (' + labels[i] + ')')
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(adv_images[i].reshape(28, 28), cmap=plt.cm.binary)
-  plt.show()
-  return figure
+def plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, m, n):
+
+    figure = plt.figure(figsize=(m, 3*n))
+    for i in range(m*n):
+        plt.subplot(m, 3*n, 3*i + 1, title='#' + str(i+1) + ': ' + reg_predictions[i] + ' (' + labels[i] + ')')
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(reg_images[i].reshape(28, 28), cmap=plt.cm.binary)
+
+        plt.subplot(m, 3*n, 3*i + 2, title='#' + str(i+1) + ': ' + adv_predictions[i] + ' (' + labels[i] + ')')
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(adv_images[i].reshape(28, 28), cmap=plt.cm.binary)
+
+        plt.subplot(m, 3*n, 3*i + 3, title='#' + str(i+1))
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(delta_images[i].reshape(28, 28), cmap=plt.cm.binary)
+
+    plt.show()
+    return figure
+
 
 def display_pic(pic, position):
 	pixels = pic.reshape(28, 28)
 	plt.subplot(position)
 	sns.heatmap(data=pixels)
 
-def log_image_grid(images, labels, predictions, M, N, writer):
-  plot = plot_grid(images, labels, predictions, M, N)
-  to_show = plot_to_image(plot)
-  writer.add_image('images', to_show, 0)
 
-def log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N, writer):
-  plot = plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N)
-  to_show = plot_to_image(plot)
-  writer.add_image('images', to_show, 0)
+def log_image_grid(images, labels, predictions, m, n, writer):
+    plot = plot_grid(images, labels, predictions, m, n)
+    to_show = plot_to_image(plot)
+    writer.add_image('images', to_show, 0)
+
+
+def log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, m, n, writer):
+    plot = plot_adv_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, m, n)
+    to_show = plot_to_image(plot)
+    writer.add_image('images', to_show, 0)
 
 
 def parse_data(path, device):

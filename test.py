@@ -19,43 +19,49 @@ from torch.utils.tensorboard import SummaryWriter
 import Utils.utils as utils
 import Utils.models as models
 
-def test(model_path, test_path):
+
+def test(model_path, test_path, display_rows, display_columns):
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	writer = SummaryWriter()
+	letters = string.ascii_uppercase
 
 	model = models.MyNetwork()
 	model.load_state_dict(torch.load(model_path))
 	model = model.to(device)
-	
-	test_x, test_y = utils.parse_data(test_path, device)
-
-	letters = string.ascii_uppercase
-	predictions = model(test_x)
 	model.eval()
-	accuracy = utils.evaluate(torch.max(predictions.data, 1)[1], test_y)
+
+	test_x, test_y = utils.parse_data(test_path, device)
+	output = model(test_x)
+	predictions = torch.max(output.data, 1)[1]
+
+	accuracy = utils.evaluate(predictions, test_y)
 	print("Accuracy: {}".format(accuracy))
 
-	#test visualisation
-	M, N = 2, 6
-	#images = test_x[0:M*N].detach().cpu()
-	
 	perm = torch.randperm(test_x.size(0))
-	ids = perm[:M*N]
-	
+	ids = perm[:display_rows*display_columns]
+
 	images = test_x[ids].detach().cpu()
-
 	labels = [letters[test_y[i].detach().cpu()] for i in ids]
-	predictions = [letters[torch.max(predictions.data, 1)[1][i].item()] for i in ids]
+	predictions = [letters[predictions[i].item()] for i in ids]
 
-	utils.log_image_grid(images, labels, predictions, M, N, writer)
-
+	utils.log_image_grid(images, labels, predictions, display_rows, display_columns, writer)
 	writer.close()
 
+
+# python3 test.py <model_path> <test_path> <display_rows> <display_columns>
 if __name__ == "__main__":
-	if len(sys.argv) != 3:
+	if len(sys.argv) != 5:
 		print("\nWrong command syntax.\n")
 	else:
-		model_path = sys.argv[1]
-		test_path = sys.argv[2]
-		test(model_path, test_path)
+		good = True
+		try:
+			model_path = sys.argv[1]
+			test_path = sys.argv[2]
+			display_rows = int(sys.argv[3])
+			display_columns = int(sys.argv[4])
+		except ValueError:
+			print("\nInvalid parameters.\n")
+			good = False
+		if good:
+			test(model_path, test_path, display_rows, display_columns)

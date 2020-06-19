@@ -19,28 +19,28 @@ from torch.utils.tensorboard import SummaryWriter
 import Utils.utils as utils
 import Utils.models as models
 
-def fgsm(model, X, y, epsilon):
+
+def fgsm(model, x, y, epsilon):
     """ Construct FGSM adversarial examples on the examples X"""
-    delta = torch.zeros_like(X, requires_grad=True)
-    loss = nn.CrossEntropyLoss()(model(X + delta), y)
+    delta = torch.zeros_like(x, requires_grad=True)
+    loss_function = nn.CrossEntropyLoss()
+    loss = loss_function(model(x + delta), y)
     loss.backward()
     return epsilon * delta.grad.detach().sign()
 
 
-def pgd_linf(model, X, y, epsilon, alpha = 1, num_iter = 100):
-    """ Construct PGD adversarial examples on the examples X"""
-    delta = torch.zeros_like(X, requires_grad=True)
+def pgd_linf(model, x, y, epsilon, alpha = 1, num_iter = 100):
+    delta = torch.zeros_like(x, requires_grad=True)
+    loss_function = nn.CrossEntropyLoss()
     for t in range(num_iter):
-        loss = nn.CrossEntropyLoss()(model(X + delta), y)
-        #print(loss)
+        loss = loss_function(model(x + delta), y)
         loss.backward()
         delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
         delta.grad.zero_()
     return delta.detach()
 
 
-
-def attack(model_path, test_path, batch_size, attack_type):
+def attack(model_path, test_path, attack_type, batch_size, display_rows, display_columns):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     writer = SummaryWriter()
@@ -52,14 +52,13 @@ def attack(model_path, test_path, batch_size, attack_type):
     model.eval()
 
     test_x, test_y = utils.parse_data(test_path, device)
-
     test_delta = torch.zeros_like(test_x)
     
     for i in range(0, test_x.shape[0], batch_size):
         test_x_mini = test_x[i:i + batch_size]
         test_y_mini = test_y[i:i + batch_size]
 
-        delta = attack_type(model, test_x_mini, test_y_mini, 5)
+        delta = attack_type(model, test_x_mini, test_y_mini, 4)
         output = model(test_x_mini + delta)
         predictions = torch.max(output.data, 1)[1]
         
@@ -69,11 +68,14 @@ def attack(model_path, test_path, batch_size, attack_type):
     
     reg_output = model(test_x)
     adv_output = model(test_x + test_delta)
+    
+    reg_accuracy = utils.evaluate(torch.max(reg_output.data, 1)[1], test_y)
+    adv_accuracy = utils.evaluate(torch.max(adv_output.data, 1)[1], test_y)
+    print("Regular accuracy: {}".format(reg_accuracy))
+    print("Adversarial accuracy: {}".format(adv_accuracy))
 
-    #test visualisation
-    M, N = 4, 3
     perm = torch.randperm(test_x.size(0))
-    ids = perm[:M*N]
+    ids = perm[:display_rows*display_columns]
 
     reg_images = test_x[ids].detach().cpu()
     delta_images = test_delta[ids].detach().cpu()
@@ -83,26 +85,34 @@ def attack(model_path, test_path, batch_size, attack_type):
     reg_predictions = [letters[torch.max(reg_output.data, 1)[1][i].item()] for i in ids]
     adv_predictions = [letters[torch.max(adv_output.data, 1)[1][i].item()] for i in ids]
 
-    utils.log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, M, N, writer)
-
+    utils.log_adv_image_grid(reg_images, delta_images, adv_images, labels, reg_predictions, adv_predictions, display_rows, display_columns, writer)
     writer.close()
 
 
-
+# python3 attack.py <model_path> <test_path> <attack_type> <batch_size> <display_rows> <display_columns>
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 7:
         print("\nWrong command syntax.\n")
     else:
-        model_path = sys.argv[1]
-        test_path = sys.argv[2]
+        good = True
+        try:
+            model_path = sys.argv[1]
+            test_path = sys.argv[2]
+            batch_size = int(sys.argv[4])
+            display_rows = int(sys.argv[5])
+            display_columns = int(sys.argv[6])
+        except ValueError:
+            print("\nInvalid parameters.\n")
+            good = False
+
+        if good:
+            attack_type = None
+            if sys.argv[3] == "pgd_linf":
+                attack_type = pgd_linf
+            elif sys.argv[3] == "fgsm":
+                attack_type = fgsm
         
-        attack_type = None
-        if sys.argv[3] == "pgd_linf":
-            attack_type = pgd_linf
-        elif sys.argv[3] == "fgsm":
-            attack_type = fgsm
-        
-        if attack_type == None:
-            print("\nInvalid Attack Type selected.\n")
-        else:
-            attack(model_path, test_path, 100, attack_type)
+            if attack_type == None:
+                print("\nInvalid attack type specified.\n")
+            else:
+                attack(model_path, test_path, attack_type, batch_size, display_rows, display_columns)
