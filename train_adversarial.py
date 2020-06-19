@@ -36,7 +36,7 @@ def train_adversarial(model_path, train_path, attack_type, num_epochs, batch_siz
 			train_x_mini = train_x[i:i + batch_size].to(device)
 			train_y_mini = train_y[i:i + batch_size].to(device)
         
-			delta_mini = attack_type(model, train_x_mini, train_y_mini, 4)
+			delta_mini = attack_type(model, train_x_mini, train_y_mini)
 			output = model(train_x_mini + delta_mini)
 
 			optimizer.zero_grad()
@@ -76,6 +76,8 @@ if __name__ == "__main__":
 			attack_type = None
 			if sys.argv[3] == "pgd_linf":
 				attack_type = attacks.pgd_linf
+			elif sys.argv[3] == "pgd_l2":
+				attack_type = attacks.pgd_l2
 			elif sys.argv[3] == "fgsm":
 				attack_type = attacks.fgsm
 			

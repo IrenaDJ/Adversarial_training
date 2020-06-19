@@ -41,7 +41,7 @@ def attack(model_path, test_path, attack_type, batch_size, display_rows, display
         test_x_mini = test_x[i:i + batch_size]
         test_y_mini = test_y[i:i + batch_size]
 
-        delta = attack_type(model, test_x_mini, test_y_mini, 4)
+        delta = attack_type(model, test_x_mini, test_y_mini)
         output = model(test_x_mini + delta)
         predictions = torch.max(output.data, 1)[1]
         
@@ -92,6 +92,8 @@ if __name__ == "__main__":
             attack_type = None
             if sys.argv[3] == "pgd_linf":
                 attack_type = attacks.pgd_linf
+            elif sys.argv[3] == "pgd_l2":
+                attack_type = attacks.pgd_l2
             elif sys.argv[3] == "fgsm":
                 attack_type = attacks.fgsm
         
